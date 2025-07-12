@@ -1,0 +1,6 @@
+.env
+node_modules
+consumption*
+consumo*
+data*
+db/
