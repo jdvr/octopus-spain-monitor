@@ -2,7 +2,7 @@ const OPEN_CONSUMTION = {
   closed: false,
   year: 2025,
   month: 1,
-  lastUpdated: "2025-05-13T11:33:27.751Z",
+  lastUpdated: '2025-05-13T11:33:27.751Z',
   consumptions: [
     {
       day: 1,
@@ -51,7 +51,7 @@ const CLOSED_CONSUMTION = {
   closed: true,
   year: 2025,
   month: 6,
-  lastUpdated: "2025-05-13T11:33:27.751Z",
+  lastUpdated: '2025-05-13T11:33:27.751Z',
   consumptions: [
     {
       day: 1,
@@ -176,7 +176,7 @@ const CLOSED_CONSUMTION = {
   ],
 };
 
-
 module.exports = {
-    OPEN_CONSUMTION, CLOSED_CONSUMTION
-}
+  OPEN_CONSUMTION,
+  CLOSED_CONSUMTION,
+};
