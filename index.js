@@ -1,152 +1,144 @@
 require('dotenv').config();
 
 const express = require('express');
-const axios = require('axios');
-const fs = require('fs/promises'); // Usamos la versión de promesas para código más limpio
+const createApi = require('./src/api');
+const createExtractService = require('./src/service/extract');
+const createReportService = require('./src/service/report');
+const jsonStorage = require('./src/storage/json-files');
+
+const path = require('path')
 
 const app = express();
 const port = 7000;
 
-const { API_URL, OCTOPUS_EMAIL, OCTOPUS_PASSWORD, OCTOPUS_PROPERTY_ID } =
-  process.env;
+const {
+  API_URL,
+  OCTOPUS_EMAIL,
+  OCTOPUS_PASSWORD,
+  OCTOPUS_PROPERTY_ID,
+} = process.env;
 
 const ALL_CONFIG_EXISTS =
-  API_URL && OCTOPUS_EMAIL && OCTOPUS_PASSWORD && OCTOPUS_PROPERTY_ID;
+  API_URL &&
+  OCTOPUS_EMAIL &&
+  OCTOPUS_PASSWORD &&
+  OCTOPUS_PROPERTY_ID
 if (!ALL_CONFIG_EXISTS) {
   console.error('Ensure all env var are available. Check .env.sample file');
   process.exit(1);
 }
 
+const api = createApi({
+  apiUrl: API_URL,
+  email: OCTOPUS_EMAIL,
+  password: OCTOPUS_PASSWORD,
+  propertyId: OCTOPUS_PROPERTY_ID,
+});
+
+const storage = jsonStorage({ basePath: path.join(__dirname, 'db') });
+const extractService = createExtractService(api, storage);
+const reportService = createReportService(storage);
+
 /**
  * =================================================================
- * ENDPOINTS DEL SERVIDOR WEB
+ * ENDPOINTS
  * =================================================================
  */
 
-/**
- * Endpoint para extraer los datos del mes actual y guardarlos en un fichero.
- * Diseñado para ser llamado por un cron job.
- */
-app.get('/extraer', async (req, res) => {
+app.get('/update', async (req, res) => {
   try {
-    console.log('--- Proceso de extracción iniciado ---');
+    const { year, month } = req.query;
+    const yearNum = year ? parseInt(year, 10) : undefined;
+    const monthNum = month ? parseInt(month, 10) : undefined;
 
-    const { ano, mes } = req.query;
-    let year, month_0_indexed; // El mes en JS va de 0 a 11
+    const now = new Date();
+    const targetYear = yearNum || now.getFullYear();
+    const targetMonth = monthNum || now.getMonth() + 1;
 
-    // 1. Determinar el mes y año a procesar
-    if (ano && mes) {
-      // Si se especifican parámetros, úsalos
-      year = parseInt(ano);
-      month_0_indexed = parseInt(mes) - 1; // Convertimos el mes (1-12) al formato de JS (0-11)
-      console.log(
-        `Parámetros recibidos: Procesando mes ${mes} del año ${year}`,
-      );
-    } else {
-      // Si no hay parámetros, usa la fecha actual
-      const now = new Date();
-      year = now.getFullYear();
-      month_0_indexed = now.getMonth();
-      console.log(
-        `Sin parámetros: Procesando mes actual (${month_0_indexed + 1}/${year})`,
-      );
-    }
-
-    // Validar que los valores sean correctos
-    if (
-      isNaN(year) ||
-      isNaN(month_0_indexed) ||
-      month_0_indexed < 0 ||
-      month_0_indexed > 11
-    ) {
+    const existingConsumption = await storage.readMonthlyConsumption(
+      targetYear,
+      targetMonth,
+    );
+    if (existingConsumption.closed) {
       return res
-        .status(400)
-        .send({ error: 'El año o el mes proporcionados no son válidos.' });
+        .status(200)
+        .send({
+          message: 'Consumption data is already closed for this month.',
+        });
     }
 
-    // 2. Calcular las fechas de inicio y fin para la API (en UTC)
-    const startDate = new Date(Date.UTC(year, month_0_indexed, 1));
-    const endDate = new Date(Date.UTC(year, month_0_indexed + 1, 1));
-
-    // 2. Autenticar y obtener datos
-    const token = await getToken();
-    const consumptionData = await getDailyConsumption(
-      token,
-      startDate,
-      endDate,
-    );
-
-    // 4. Preparar los datos y guardarlos
-    const monthString = (month_0_indexed + 1).toString().padStart(2, '0');
-    const fileName = `consumo-${year}-${monthString}.json`;
-
-    // Simplificamos la estructura de datos para que sea más fácil de usar
-    const simplifiedData = consumptionData.map((edge) => ({
-      fecha: edge.node.startAt.split('T')[0], // Solo la fecha
-      consumo_kwh: parseFloat(edge.node.value),
-    }));
-
-    await fs.writeFile(
-      fileName,
-      JSON.stringify(simplifiedData, null, 2),
-      'utf-8',
-    );
-
-    console.log(`Datos guardados correctamente en ${fileName}`);
-    res.status(200).send({
-      mensaje: `Datos extraídos y guardados con éxito para ${year}-${monthString}`,
-      fichero: fileName,
-      registros: simplifiedData.length,
-    });
+    await extractService.run(yearNum, monthNum);
+    res.status(200).send({ message: 'Extraction process finished.' });
   } catch (error) {
-    console.error('--- Fallo en el proceso de extracción ---', error);
-    res
-      .status(500)
-      .send({
-        error: 'No se pudieron extraer los datos.',
-        details: error.message,
-      });
+    console.error('--- Extraction process failed ---', error);
+    res.status(500).send({
+      error: 'Failed to extract data.',
+      details: error.message,
+    });
   }
 });
 
-/**
- * Endpoint para leer los datos de consumo de un mes específico desde un fichero guardado.
- * Ejemplo de uso: /consumo?ano=2025&mes=07
- */
-app.get('/consumo', async (req, res) => {
-  const { ano, mes } = req.query;
-
-  if (!ano || !mes) {
-    return res
-      .status(400)
-      .send({ error: 'Los parámetros "ano" y "mes" son obligatorios.' });
-  }
-
-  const fileName = `consumo-${ano}-${mes.padStart(2, '0')}.json`;
-
+app.get('/report/last/:days/days', async (req, res) => {
   try {
-    const data = await fs.readFile(fileName, 'utf-8');
-    res.status(200).json(JSON.parse(data));
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      // ENOENT significa "Error, No such file or directory"
-      res
-        .status(404)
-        .send({
-          error: `No se encontraron datos para ${ano}-${mes}. Ejecuta primero el endpoint /extraer para ese mes.`,
-        });
-    } else {
-      res.status(500).send({ error: 'Error al leer el fichero de datos.' });
+    const { days } = req.params;
+    const daysNum = parseInt(days, 10);
+    if (isNaN(daysNum)) {
+      return res.status(400).send({ error: 'Invalid number of days.' });
     }
+    const report = await reportService.periodForLastDays(daysNum);
+    res.status(200).json(report);
+  } catch (error) {
+    console.error('--- Report generation failed ---', error);
+    res.status(500).send({
+      error: 'Failed to generate report.',
+      details: error.message,
+    });
   }
+});
+
+app.get('/report/:year', async (req, res) => {
+  try {
+    const { year } = req.params;
+    const yearNum = parseInt(year, 10);
+    if (isNaN(yearNum)) {
+      return res.status(400).send({ error: 'Invalid year.' });
+    }
+    const report = await reportService.yearlyReport(yearNum);
+    res.status(200).json(report);
+  } catch (error) {
+    console.error('--- Report generation failed ---', error);
+    res.status(500).send({
+      error: 'Failed to generate report.',
+      details: error.message,
+    });
+  }
+});
+
+app.get('/report/:year/:month', async (req, res) => {
+  try {
+    const { year, month } = req.params;
+    const yearNum = parseInt(year, 10);
+    const monthNum = parseInt(month, 10);
+    if (isNaN(yearNum) || isNaN(monthNum)) {
+      return res.status(400).send({ error: 'Invalid year or month.' });
+    }
+    const report = await reportService.monthlyReport(yearNum, monthNum);
+    res.status(200).json(report);
+  } catch (error) {
+    console.error('--- Report generation failed ---', error);
+    res.status(500).send({
+      error: 'Failed to generate report.',
+      details: error.message,
+    });
+  }
+});
+
+app.use(function(req, res, next) {
+  res.status(404);
+ res.json({ error: 'Not found' });
 });
 
 // Iniciar el servidor
 app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
-  console.log('Endpoints disponibles:');
-  console.log(`  - GET /extraer (extrae los datos del mes actual)`);
-  console.log(
-    `  - GET /consumo?ano=AAAA&mes=MM (devuelve los datos de un mes)`,
-  );
 });

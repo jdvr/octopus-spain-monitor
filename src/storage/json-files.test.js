@@ -1,4 +1,4 @@
-const { jsonStorage } = require('./json-files');
+const jsonStorage  = require('./json-files');
 const {
   OPEN_CONSUMTION,
   CLOSED_CONSUMTION,

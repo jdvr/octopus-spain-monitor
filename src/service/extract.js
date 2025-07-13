@@ -28,7 +28,6 @@ function createExtractService(api, storage) {
 
     try {
       const consumptionData = await api.getDailyConsumption(startDate, endDate);
-      console.log({consumptionData})
       const parsedConsumption = consumptionData.map((edge) => ({
         day: parseInt(new Date(edge.node.startAt).getDate()),
         kwh: parseFloat(edge.node.value),
@@ -39,7 +38,7 @@ function createExtractService(api, storage) {
         year: startDate.getFullYear(),
         month: endDate.getMonth() + 1,
         lastUpdated: now.toISOString(),
-        consumptions: consumptionData,
+        consumptions: parsedConsumption,
       };
 
       await storage.saveMonthlyConsumption(monthlyConsumption);
@@ -49,7 +48,7 @@ function createExtractService(api, storage) {
         'failed to extract data',
         'FAILED_TO_EXTRACT_DATA',
         { year, month },
-        error
+        error,
       );
     }
   };

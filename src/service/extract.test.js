@@ -1,7 +1,9 @@
 const createExtractService = require('./extract');
 const CustomError = require('../util/error');
-const apiReponseJuly = require('../fixtures/api-daily-consumption-july.json').data.property.measurements.edges;
-const apiResponseJune = require('../fixtures/api-daily-consumption-june.json').data.property.measurements.edges;
+const apiReponseJuly = require('../fixtures/api-daily-consumption-july.json')
+  .data.property.measurements.edges;
+const apiResponseJune = require('../fixtures/api-daily-consumption-june.json')
+  .data.property.measurements.edges;
 
 describe('extractService', () => {
   let api;
@@ -42,7 +44,9 @@ describe('extractService', () => {
     expect(savedData.year).toBe(year);
     expect(savedData.month).toBe(month);
     expect(savedData.closed).toBe(false);
-    expect(savedData.consumptions).toEqual(apiReponseJuly);
+    expect(savedData.consumptions).toHaveLength(10)
+    const firstDay = savedData.consumptions.find(c => c.day === 1)
+    expect(firstDay.kwh).toBeCloseTo(15.459)
   });
 
   it('should handle incomplete consumption data for a month', async () => {
@@ -66,7 +70,6 @@ describe('extractService', () => {
       return now;
     });
     dateSpy.UTC = OriginalDate.UTC;
-
 
     api.getDailyConsumption.mockResolvedValue(apiReponseJuly);
 

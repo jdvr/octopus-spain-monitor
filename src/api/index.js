@@ -37,10 +37,10 @@ const ELECTRICITY_FILTER = {
   },
 };
 
-function createApi({ url, email, password, propertyId }) {
+function createApi({ apiUrl, email, password, propertyId }) {
   const getToken = async () => {
     try {
-      const response = await axios.post(url, {
+      const response = await axios.post(apiUrl, {
         query: AUTH_MUTATION,
         variables: {
           input: {
@@ -67,7 +67,7 @@ function createApi({ url, email, password, propertyId }) {
     const token = await getToken();
 
     const variables = {
-      propertyId: OCTOPUS_PROPERTY_ID,
+      propertyId,
       first: 31,
       startAt: startDate.toISOString(),
       endAt: endDate.toISOString(),
@@ -77,7 +77,7 @@ function createApi({ url, email, password, propertyId }) {
 
     try {
       const response = await axios.post(
-        API_URL,
+        apiUrl,
         {
           query: GET_CONSUMPTION_QUERY,
           variables: variables,

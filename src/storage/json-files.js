@@ -89,6 +89,8 @@ function jsonStorage(config) {
     }
   };
 
+  console.info(`Created storage service in ${basePath}`);
+
   return {
     lockAccount,
     saveMonthlyConsumption,
@@ -96,6 +98,4 @@ function jsonStorage(config) {
   };
 }
 
-module.exports = {
-  jsonStorage,
-};
+module.exports = jsonStorage;
