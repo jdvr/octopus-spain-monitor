@@ -44,9 +44,9 @@ describe('extractService', () => {
     expect(savedData.year).toBe(year);
     expect(savedData.month).toBe(month);
     expect(savedData.closed).toBe(false);
-    expect(savedData.consumptions).toHaveLength(10)
-    const firstDay = savedData.consumptions.find(c => c.day === 1)
-    expect(firstDay.kwh).toBeCloseTo(15.459)
+    expect(savedData.consumptions).toHaveLength(10);
+    const firstDay = savedData.consumptions.find((c) => c.day === 1);
+    expect(firstDay.kwh).toBeCloseTo(15.459);
   });
 
   it('should handle incomplete consumption data for a month', async () => {

@@ -6,23 +6,16 @@ const createExtractService = require('./src/service/extract');
 const createReportService = require('./src/service/report');
 const jsonStorage = require('./src/storage/json-files');
 
-const path = require('path')
+const path = require('path');
 
 const app = express();
 const port = 7000;
 
-const {
-  API_URL,
-  OCTOPUS_EMAIL,
-  OCTOPUS_PASSWORD,
-  OCTOPUS_PROPERTY_ID,
-} = process.env;
+const { API_URL, OCTOPUS_EMAIL, OCTOPUS_PASSWORD, OCTOPUS_PROPERTY_ID } =
+  process.env;
 
 const ALL_CONFIG_EXISTS =
-  API_URL &&
-  OCTOPUS_EMAIL &&
-  OCTOPUS_PASSWORD &&
-  OCTOPUS_PROPERTY_ID
+  API_URL && OCTOPUS_EMAIL && OCTOPUS_PASSWORD && OCTOPUS_PROPERTY_ID;
 if (!ALL_CONFIG_EXISTS) {
   console.error('Ensure all env var are available. Check .env.sample file');
   process.exit(1);
@@ -60,11 +53,9 @@ app.get('/update', async (req, res) => {
       targetMonth,
     );
     if (existingConsumption.closed) {
-      return res
-        .status(200)
-        .send({
-          message: 'Consumption data is already closed for this month.',
-        });
+      return res.status(200).send({
+        message: 'Consumption data is already closed for this month.',
+      });
     }
 
     await extractService.run(yearNum, monthNum);
@@ -133,9 +124,9 @@ app.get('/report/:year/:month', async (req, res) => {
   }
 });
 
-app.use(function(req, res, next) {
+app.use(function (req, res) {
   res.status(404);
- res.json({ error: 'Not found' });
+  res.json({ error: 'Not found' });
 });
 
 // Iniciar el servidor
