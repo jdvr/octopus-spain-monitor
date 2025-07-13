@@ -1,6 +1,7 @@
 .env
 node_modules
 consumption*
+!consumption*.js
 consumo*
 data*
 db/

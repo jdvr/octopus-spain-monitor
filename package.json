@@ -4,7 +4,9 @@
   "description": "Extract and cache Octopus Energy consumption data",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint 'src/**/*.js' index.js",
+    "lint:fix": "eslint 'src/**/*.js' index.js --fix"
   },
   "author": "",
   "license": "ISC",

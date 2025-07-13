@@ -8,7 +8,12 @@ const app = express();
 const port = 7000;
 
 const { API_URL, OCTOPUS_EMAIL, OCTOPUS_PASSWORD, OCTOPUS_PROPERTY_ID } = process.env;
-//console.log({ API_URL, OCTOPUS_EMAIL, OCTOPUS_PASSWORD, OCTOPUS_PROPERTY_ID });
+
+const ALL_CONFIG_EXISTS = API_URL && OCTOPUS_EMAIL && OCTOPUS_PASSWORD && OCTOPUS_PROPERTY_ID
+if (!ALL_CONFIG_EXISTS) {
+    console.error('Ensure all env var are available. Check .env.sample file')
+    process.exit(1)
+}
 
 
 async function getToken() {
