@@ -79,3 +79,7 @@ To automatically fix linting errors, run:
 ```sh
 npm run lint:fix
 ```
+
+## Contributors
+
+Myself & Cline using Gemini 2.5 Pro
